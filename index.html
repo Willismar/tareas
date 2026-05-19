@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Willismar Tareas</title>
+
+<!-- PWA -->
+<meta name="application-name" content="Willismar Tareas">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Willismar Tareas">
+<meta name="theme-color" content="#0a2455">
+<meta name="description" content="Gestión de Actividades — Willismar">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-tareas-192.png">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a2455'/><text y='.9em' font-size='70' x='15'>📋</text></svg>">
+
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --bg2: #ffffff;
+    --bg3: #e8f0fe;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --azul: #1450a3;
+    --azul2: #1a60c0;
+    --azulOscuro: #0a2455;
+    --accent: #1450a3;
+    --accent2: #1a60c0;
+    --accent3: #0ea5e9;
+    --cian: #0ea5e9;
+    --cian2: #38bdf8;
+    --green: #16a34a;
+    --orange: #f59e0b;
+    --red: #dc2626;
+    --purple: #7c3aed;
+    --pink: #db2777;
+    --text: #0f172a;
+    --text2: #475569;
+    --text3: #94a3b8;
+    --radius: 14px;
+    --shadow: 0 2px 16px rgba(20,80,163,.08);
+    --shadowG: 0 8px 32px rgba(20,80,163,.15);
+    --font: 'Plus Jakarta Sans', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; overflow-x:hidden; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* HEADER */
+  header {
+    background: var(--azulOscuro);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    padding: 0 24px;
+    display: flex; align-items:center; justify-content:space-between;
+    height: 64px; position:sticky; top:0; z-index:100;
+    box-shadow: 0 2px 16px rgba(10,36,85,.2);
+  }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-icon { width:40px; height:40px; background:var(--cian); border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--font); font-weight:800; font-size:16px; color:#fff; }
+  .logo-text { font-family:var(--font); font-weight:800; font-size:18px; color:#fff; }
+  .logo-text span { color:var(--cian2); }
+  .student-chip {
+    display:flex; align-items:center; gap:8px; background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:6px 12px;
+    cursor:pointer; transition:all .18s; font-size:13px; color:rgba(255,255,255,.7);
+  }
+  .student-chip:hover { border-color:var(--cian); color:#fff; }
+  .student-chip .avatar {
+    width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,var(--cian),var(--azul));
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; color:#fff;
+  }
+  .student-chip .stu-name { font-weight:700; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#fff; }
+  .header-right { display:flex; align-items:center; gap:10px; }
+  #notif-btn {
+    position:relative; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15);
+    color:rgba(255,255,255,.7); padding:8px 12px; border-radius:10px; cursor:pointer;
+    font-size:18px; transition:all .2s;
+  }
+  #notif-btn:hover { border-color:var(--cian); color:var(--cian); }
+  .notif-badge {
+    position:absolute; top:-4px; right:-4px; background:var(--red);
+    color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px;
+    border-radius:9px; display:flex; align-items:center; justify-content:center;
+    padding:0 4px;
+  }
+  .notif-badge.hidden { display:none; }
+
+  /* LAYOUT */
+  .app { display:flex; min-height:calc(100vh - 64px); }
+
+  /* SIDEBAR */
+  nav {
+    width: 220px; background:var(--azulOscuro); border-right:1px solid rgba(255,255,255,.06);
+    padding:20px 12px; display:flex; flex-direction:column; gap:4px;
+    position:sticky; top:64px; height:calc(100vh - 64px); overflow-y:auto;
+    flex-shrink:0;
+  }
+  .nav-section { font-size:10px; font-weight:800; color:rgba(255,255,255,.28); letter-spacing:.15em; text-transform:uppercase; padding:12px 10px 6px; }
+  .nav-btn {
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
+    cursor:pointer; color:rgba(255,255,255,.6); font-size:13px; font-weight:600;
+    transition:all .18s; border:none; background:transparent; width:100%; text-align:left;
+  }
+  .nav-btn:hover { background:rgba(255,255,255,.08); color:#fff; }
+  .nav-btn.active { background:rgba(14,165,233,.22); color:var(--cian2); border:1px solid rgba(14,165,233,.25); font-weight:700; }
+  .nav-btn .icon { font-size:18px; width:22px; text-align:center; }
+
+  /* MAIN */
+  main { flex:1; padding:28px; overflow-y:auto; background:var(--bg); }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* PAGE HEADER */
+  .page-header { margin-bottom:28px; }
+  .page-header h1 { font-family:var(--font); font-size:26px; font-weight:900; margin-bottom:4px; color:var(--azul); }
+  .page-header p { color:var(--text2); font-size:14px; }
+
+  /* CARDS GRID */
+  .cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+
+  /* STAT CARDS */
+  .stat-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+  .stat-card {
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; position:relative; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .stat-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+    background:var(--accent-color, var(--azul));
+  }
+  .stat-card .num { font-family:var(--font); font-size:32px; font-weight:900; line-height:1; color:var(--azul); }
+  .stat-card .label { font-size:12px; color:var(--text2); margin-top:4px; font-weight:600; }
+
+  /* ACTIVITY CARD */
+  .act-card {
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px; transition:all .2s; cursor:pointer; position:relative; overflow:hidden;
+    box-shadow:var(--shadow);
+  }
+  .act-card::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:4px;
+    background: var(--tipo-color, var(--azul));
+  }
+  .act-card:hover { border-color:var(--cian); transform:translateY(-2px); box-shadow:var(--shadowG); }
+  .act-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .act-tipo { font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 8px; border-radius:6px; background:var(--bg3); color:var(--azul); }
+  .act-card h3 { font-family:var(--font); font-size:15px; font-weight:800; flex:1; line-height:1.3; color:var(--text); }
+  .act-card .meta { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--text2); margin-top:8px; }
+  .meta-item { display:flex; align-items:center; gap:4px; }
+  .act-urgente { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .urgente-hoy { background:rgba(220,38,38,.1); color:var(--red); border:1px solid rgba(220,38,38,.25); }
+  .urgente-pronto { background:rgba(245,158,11,.1); color:var(--orange); border:1px solid rgba(245,158,11,.25); }
+  .urgente-ok { background:rgba(22,163,74,.1); color:var(--green); border:1px solid rgba(22,163,74,.2); }
+  .urgente-vencida { background:rgba(148,163,184,.1); color:var(--text3); border:1px solid var(--border); text-decoration:line-through; }
+  .act-actions { display:flex; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+
+  /* BUTTONS */
+  .btn { padding:8px 16px; border-radius:9px; border:none; cursor:pointer; font-family:var(--font); font-size:13px; font-weight:700; transition:all .18s; }
+  .btn-primary { background:var(--azul); color:#fff; }
+  .btn-primary:hover { background:var(--azul2); transform:translateY(-1px); }
+  .btn-secondary { background:var(--bg3); color:var(--text2); border:1px solid var(--border); }
+  .btn-secondary:hover { border-color:var(--cian); color:var(--azul); }
+  .btn-danger { background:rgba(220,38,38,.08); color:var(--red); border:1px solid rgba(220,38,38,.18); }
+  .btn-danger:hover { background:rgba(220,38,38,.16); }
+  .btn-sm { padding:5px 11px; font-size:12px; border-radius:7px; }
+  .btn-green { background:rgba(22,163,74,.1); color:var(--green); border:1px solid rgba(22,163,74,.2); }
+  .btn-green:hover { background:rgba(22,163,74,.2); }
+
+  /* FORMS */
+  .form-card {
+    background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+    padding:24px; margin-bottom:24px; box-shadow:var(--shadow);
+  }
+  .form-card h2 { font-family:var(--font); font-size:18px; font-weight:800; margin-bottom:18px; color:var(--azul); }
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group.full { grid-column:1/-1; }
+  label { font-size:12px; font-weight:700; color:var(--text2); letter-spacing:.03em; text-transform:uppercase; }
+  input, select, textarea {
+    background:#fafbfc; border:2px solid var(--border); color:var(--text);
+    padding:10px 12px; border-radius:9px; font-family:var(--font); font-size:14px;
+    transition:border .18s; outline:none; width:100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color:var(--cian); background:#fff; box-shadow:0 0 0 3px rgba(14,165,233,.1); }
+  textarea { resize:vertical; min-height:80px; }
+  .file-zone {
+    border:2px dashed var(--border); border-radius:10px; padding:24px; text-align:center;
+    cursor:pointer; transition:all .2s; background:#fafbfc;
+  }
+  .file-zone:hover { border-color:var(--cian); background:var(--bg3); }
+  .file-zone .icon { font-size:32px; margin-bottom:8px; }
+  .file-zone p { font-size:13px; color:var(--text2); }
+  .file-zone strong { color:var(--azul); }
+  .file-name { font-size:12px; color:var(--green); margin-top:6px; font-weight:600; }
+
+  /* MODAL */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:1000;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+    opacity:0; pointer-events:none; transition:opacity .2s; backdrop-filter:blur(4px);
+  }
+  .modal-overlay.open { opacity:1; pointer-events:all; }
+  .modal {
+    background:var(--bg2); border:1px solid var(--border); border-radius:18px;
+    padding:0; width:100%; max-width:640px; max-height:90vh; overflow-y:auto;
+    transform:translateY(20px); transition:transform .25s; box-shadow:0 32px 80px rgba(0,0,0,.2);
+  }
+  .modal-overlay.open .modal { transform:translateY(0); }
+  .modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 24px; background:var(--azulOscuro); border-radius:18px 18px 0 0; }
+  .modal-header h2 { font-family:var(--font); font-size:18px; font-weight:800; color:#fff; }
+  .modal-close { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.7); width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center; transition:all .18s; }
+  .modal-close:hover { border-color:var(--red); color:var(--red); }
+  .modal-body { padding:24px; }
+
+  /* NOTIF PANEL */
+  .notif-panel {
+    position:fixed; top:70px; right:16px; width:340px; background:var(--bg2);
+    border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadowG);
+    z-index:200; display:none; overflow:hidden;
+  }
+  .notif-panel.open { display:block; }
+  .notif-panel-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--azulOscuro); }
+  .notif-panel-header h3 { font-family:var(--font); font-size:14px; font-weight:800; color:#fff; }
+  .notif-list { max-height:360px; overflow-y:auto; }
+  .notif-item { padding:12px 16px; border-bottom:1px solid var(--border); font-size:13px; }
+  .notif-item:last-child { border-bottom:none; }
+  .notif-item .notif-title { font-weight:700; margin-bottom:3px; color:var(--text); }
+  .notif-item .notif-sub { color:var(--text2); font-size:12px; }
+  .notif-item.urgent { border-left:3px solid var(--red); }
+  .notif-item.soon { border-left:3px solid var(--orange); }
+  .notif-empty { padding:24px; text-align:center; color:var(--text3); font-size:13px; }
+
+  /* CALENDAR */
+  .cal-wrap { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+  .cal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:var(--azulOscuro); }
+  .cal-header h2 { font-family:var(--font); font-size:18px; font-weight:800; color:#fff; }
+  .cal-nav { display:flex; gap:8px; }
+  .cal-nav button { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); color:#fff; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:16px; transition:all .18s; }
+  .cal-nav button:hover { border-color:var(--cian); color:var(--cian); }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); }
+  .cal-day-name { text-align:center; padding:10px 4px; font-size:11px; font-weight:800; color:var(--text2); letter-spacing:.05em; text-transform:uppercase; background:var(--bg3); border-bottom:1px solid var(--border); }
+  .cal-cell { min-height:80px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); padding:6px; background:#fff; }
+  .cal-cell:nth-child(7n) { border-right:none; }
+  .cal-cell .day-num { font-size:12px; font-weight:800; color:var(--text2); margin-bottom:4px; }
+  .cal-cell.today .day-num { color:#fff; background:var(--azul); border-radius:6px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; }
+  .cal-cell.other-month { background:var(--bg); }
+  .cal-cell.other-month .day-num { color:var(--text3); }
+  .cal-dot { font-size:10px; padding:2px 5px; border-radius:4px; margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+
+  /* TABS */
+  .tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--bg3); padding:4px; border-radius:11px; border:1px solid var(--border); width:fit-content; }
+  .tab-btn { padding:7px 16px; border-radius:8px; border:none; background:transparent; color:var(--text2); cursor:pointer; font-size:13px; font-weight:700; font-family:var(--font); transition:all .18s; }
+  .tab-btn.active { background:var(--azul); color:#fff; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  thead tr { background:var(--azulOscuro); }
+  th { padding:10px 14px; text-align:left; font-size:11px; font-weight:700; color:rgba(255,255,255,.8); letter-spacing:.06em; text-transform:uppercase; }
+  td { padding:12px 14px; border-bottom:1px solid var(--border); color:var(--text2); }
+  tr:last-child td { border-bottom:none; }
+  tr:hover td { background:var(--bg3); }
+  .badge { font-size:11px; padding:3px 8px; border-radius:20px; font-weight:700; }
+
+  /* TIPO COLORS */
+  .tipo-tarea { --tipo-color:#1450a3; color:#1450a3; background:rgba(20,80,163,.1); }
+  .tipo-test { --tipo-color:#7c3aed; color:#7c3aed; background:rgba(124,58,237,.1); }
+  .tipo-casos { --tipo-color:#f59e0b; color:#b45309; background:rgba(245,158,11,.1); }
+  .tipo-investigacion { --tipo-color:#16a34a; color:#16a34a; background:rgba(22,163,74,.1); }
+  .tipo-foro { --tipo-color:#db2777; color:#db2777; background:rgba(219,39,119,.1); }
+  .tipo-practico { --tipo-color:#0ea5e9; color:#0369a1; background:rgba(14,165,233,.1); }
+  .tipo-componente { --tipo-color:#ea580c; color:#ea580c; background:rgba(234,88,12,.1); }
+  .tipo-taller { --tipo-color:#7c3aed; color:#7c3aed; background:rgba(124,58,237,.1); }
+  .tipo-titulo { --tipo-color:#65a30d; color:#65a30d; background:rgba(101,163,13,.1); }
+
+  /* FILTERS */
+  .filters { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
+  .filter-select { background:#fafbfc; border:2px solid var(--border); color:var(--text2); padding:7px 12px; border-radius:9px; font-size:13px; cursor:pointer; outline:none; font-family:var(--font); }
+  .filter-select:focus { border-color:var(--cian); }
+  .search-input { background:#fafbfc; border:2px solid var(--border); color:var(--text); padding:7px 12px; border-radius:9px; font-size:13px; outline:none; flex:1; min-width:180px; font-family:var(--font); }
+  .search-input:focus { border-color:var(--cian); }
+
+  /* TOAST */
+  #toast {
+    position:fixed; bottom:24px; right:24px; background:var(--green); color:#fff;
+    padding:12px 20px; border-radius:10px; font-size:14px; font-weight:700;
+    z-index:9999; transform:translateY(80px); opacity:0; transition:all .3s;
+    max-width:300px; box-shadow:0 8px 24px rgba(0,0,0,.2);
+  }
+  #toast.show { transform:translateY(0); opacity:1; }
+  #toast.error { background:var(--red); }
+  #toast.warn { background:var(--orange); }
+
+  /* EMPTY STATE */
+  .empty { text-align:center; padding:48px 24px; }
+  .empty .empty-icon { font-size:48px; margin-bottom:12px; opacity:.4; }
+  .empty p { color:var(--text3); font-size:14px; }
+
+  /* CHIP */
+  .chip { display:inline-flex; align-items:center; gap:6px; background:var(--bg3); border:1px solid var(--border); padding:5px 10px; border-radius:20px; font-size:12px; }
+  .chip button { background:none; border:none; cursor:pointer; color:var(--text3); font-size:14px; line-height:1; }
+  .chip button:hover { color:var(--red); }
+
+  /* ─── MÓVIL ─── */
+  @media(max-width:768px){
+    nav { display:none; }
+    .app { flex-direction:column; }
+    main { padding:14px; padding-bottom:75px; }
+    .page-header h1 { font-size:20px; }
+    .stat-row { grid-template-columns:repeat(2,1fr); gap:10px; }
+    .cards-grid { grid-template-columns:1fr; }
+    .filters { flex-direction:column; }
+    .filter-select, .search-input { width:100%; }
+    .tabs { width:100%; overflow-x:auto; }
+    .form-grid { grid-template-columns:1fr; }
+    .modal { width:96%; max-height:88vh; }
+    .modal-body { padding:16px; }
+    .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table { min-width:500px; }
+    .notif-panel { width:calc(100% - 32px); right:16px; }
+    header { padding:0 14px; }
+    .logo-text { font-size:15px; }
+    #toast { bottom:80px; right:12px; left:12px; max-width:100%; }
+  }
+
+  /* ─── BARRA MÓVIL INFERIOR ─── */
+  #mobile-nav-tareas {
+    display:none; position:fixed; bottom:0; left:0; right:0;
+    background:var(--azulOscuro); border-top:1px solid rgba(255,255,255,.1);
+    z-index:300; padding:6px 0 8px;
+    box-shadow:0 -4px 20px rgba(0,0,0,.2);
+  }
+  #mobile-nav-tareas .mnav-items { display:flex; justify-content:space-around; align-items:center; }
+  #mobile-nav-tareas .mnav-btn {
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:4px 6px; cursor:pointer; color:rgba(255,255,255,.5);
+    font-size:.58rem; font-weight:700; border:none; background:none;
+    font-family:var(--font); transition:.18s; border-radius:10px; min-width:50px;
+  }
+  #mobile-nav-tareas .mnav-btn .mico { font-size:1.25rem; line-height:1; }
+  #mobile-nav-tareas .mnav-btn.active { color:var(--cian2); }
+
+  /* Menú más */
+  #tareas-more-overlay { display:none; position:fixed; inset:0; z-index:298; background:rgba(0,0,0,.4); }
+  #tareas-more-menu {
+    display:none; position:fixed; bottom:70px; left:0; right:0;
+    background:var(--azulOscuro); border-radius:20px 20px 0 0;
+    border-top:1px solid rgba(255,255,255,.1); z-index:299;
+    padding:16px 12px; animation:slideUp .2s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  #tareas-more-menu .more-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  #tareas-more-menu .more-item {
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    padding:12px 6px; background:rgba(255,255,255,.06); border-radius:12px;
+    cursor:pointer; color:rgba(255,255,255,.8); font-size:.65rem; font-weight:700;
+    border:none; font-family:var(--font); text-align:center;
+  }
+  #tareas-more-menu .more-item .mico2 { font-size:1.4rem; }
+  #tareas-more-menu .more-item:hover { background:rgba(14,165,233,.2); color:var(--cian2); }
+
+  @media(max-width:768px){
+    #mobile-nav-tareas { display:block; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">W</div>
+    <div class="logo-text">WILLISMAR <span>Tareas</span></div>
+  </div>
+  <div class="header-right">
+    <div class="student-chip" onclick="showPage('perfil')" id="student-chip" title="Mi perfil">
+      <div class="avatar" id="stu-avatar">?</div>
+      <span class="stu-name" id="stu-name-header">Mi perfil</span>
+    </div>
+    <button id="notif-btn" onclick="toggleNotif()">🔔<span class="notif-badge hidden" id="notif-count">0</span></button>
+  </div>
+</header>
+
+<!-- NOTIF PANEL -->
+<div class="notif-panel" id="notif-panel">
+  <div class="notif-panel-header">
+    <h3>🔔 Notificaciones</h3>
+    <span id="notif-panel-count" style="font-size:12px;color:var(--text3)"></span>
+  </div>
+  <div class="notif-list" id="notif-list"></div>
+</div>
+
+<div class="app">
+  <nav>
+    <div class="nav-section">Principal</div>
+    <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="icon">📊</span><span>Dashboard</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('actividades')" id="nav-actividades">
+      <span class="icon">📋</span><span>Actividades</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('repositorio')" id="nav-repositorio">
+      <span class="icon">🗂️</span><span>Repositorio</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('calendario')" id="nav-calendario">
+      <span class="icon">📅</span><span>Calendario</span>
+    </button>
+    <div class="nav-section">Configuración</div>
+    <button class="nav-btn" onclick="showPage('estudiantes')" id="nav-estudiantes">
+      <span class="icon">🧑‍🎓</span><span>Estudiantes</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('asignaturas')" id="nav-asignaturas">
+      <span class="icon">📚</span><span>Asignaturas</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('grupos')" id="nav-grupos">
+      <span class="icon">👥</span><span>Grupos</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('perfil')" id="nav-perfil">
+      <span class="icon">🎓</span><span>Mi Perfil</span>
+    </button>
+    <button class="nav-btn" onclick="showPage('respaldo')" id="nav-respaldo">
+      <span class="icon">💾</span><span>Respaldo</span>
+    </button>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <h1>📊 Dashboard</h1>
+        <p id="dash-fecha">Cargando...</p>
+      </div>
+      <div class="stat-row" id="stat-row"></div>
+      <h2 style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:14px;">⚡ Próximas a vencer</h2>
+      <div class="cards-grid" id="dash-proximas"></div>
+    </div>
+
+    <!-- ACTIVIDADES -->
+    <div class="page" id="page-actividades">
+      <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div><h1>📋 Actividades</h1><p>Gestiona todas tus tareas y actividades</p></div>
+        <button class="btn btn-primary" onclick="openModal('nueva')">+ Nueva Actividad</button>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-pendientes')">⏳ Pendientes</button>
+        <button class="tab-btn" onclick="switchTab('tab-entregadas')">✅ Entregadas</button>
+        <button class="tab-btn" onclick="switchTab('tab-todas')">📋 Todas</button>
+      </div>
+      <div class="filters">
+        <input type="text" class="search-input" placeholder="🔍 Buscar actividad..." oninput="renderActividades()">
+        <select class="filter-select" id="fil-tipo" onchange="renderActividades()">
+          <option value="">Todos los tipos</option>
+          <option value="Tarea">Tarea</option>
+          <option value="Test">Test</option>
+          <option value="Análisis de Casos">Análisis de Casos</option>
+          <option value="Trabajo de Investigación">Trabajo de Investigación</option>
+          <option value="Título de Actividad">Título de Actividad</option>
+          <option value="Trabajo Práctico Experimental">Trabajo Práctico Experimental</option>
+          <option value="Foro">Foro</option>
+          <option value="Componente Práctico">Componente Práctico</option>
+          <option value="Taller">Taller</option>
+        </select>
+        <select class="filter-select" id="fil-asig" onchange="renderActividades()"><option value="">Todas las asignaturas</option></select>
+        <select class="filter-select" id="fil-grupo" onchange="renderActividades()"><option value="">Todos los grupos</option></select>
+        <select class="filter-select" id="fil-estudiante" onchange="renderActividades()"><option value="">Todos los estudiantes</option></select>
+      </div>
+      <div class="tab-content active" id="tab-pendientes"><div class="cards-grid" id="cards-pendientes"></div></div>
+      <div class="tab-content" id="tab-entregadas"><div class="cards-grid" id="cards-entregadas"></div></div>
+      <div class="tab-content" id="tab-todas"><div class="cards-grid" id="cards-todas"></div></div>
+    </div>
+
+    <!-- REPOSITORIO -->
+    <div class="page" id="page-repositorio">
+      <div class="page-header">
+        <h1>🗂️ Repositorio de Tareas</h1>
+        <p>Historial de todas las actividades entregadas — tu archivo permanente</p>
+      </div>
+      <!-- Filtros repositorio -->
+      <div class="filters" style="margin-bottom:20px">
+        <input type="text" class="search-input" id="repo-search" placeholder="🔍 Buscar en el repositorio..." oninput="renderRepositorio()">
+        <select class="filter-select" id="repo-fil-tipo" onchange="renderRepositorio()">
+          <option value="">Todos los tipos</option>
+          <option value="Tarea">Tarea</option>
+          <option value="Test">Test</option>
+          <option value="Análisis de Casos">Análisis de Casos</option>
+          <option value="Trabajo de Investigación">Trabajo de Investigación</option>
+          <option value="Título de Actividad">Título de Actividad</option>
+          <option value="Trabajo Práctico Experimental">Trabajo Práctico Experimental</option>
+          <option value="Foro">Foro</option>
+          <option value="Componente Práctico">Componente Práctico</option>
+          <option value="Taller">Taller</option>
+        </select>
+        <select class="filter-select" id="repo-fil-asig" onchange="renderRepositorio()"><option value="">Todas las asignaturas</option></select>
+        <select class="filter-select" id="repo-fil-est" onchange="renderRepositorio()"><option value="">Todos los estudiantes</option></select>
+        <select class="filter-select" id="repo-fil-año" onchange="renderRepositorio()"><option value="">Todos los años</option></select>
+      </div>
+      <!-- Stats repositorio -->
+      <div id="repo-stats" style="margin-bottom:20px"></div>
+      <!-- Lista -->
+      <div id="repo-lista"></div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div class="page" id="page-calendario">
+      <div class="page-header"><h1>📅 Calendario</h1><p>Vista mensual de tus actividades</p></div>
+      <div class="cal-wrap" id="cal-wrap"></div>
+    </div>
+
+    <!-- ESTUDIANTES -->
+    <div class="page" id="page-estudiantes">
+      <div class="page-header"><h1>🧑‍🎓 Estudiantes</h1><p>Registra los estudiantes a quienes les haces las tareas</p></div>
+      <div class="form-card">
+        <h2>➕ Nuevo Estudiante</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombres completos *</label>
+            <input type="text" id="est-nombre" placeholder="Ej: Ana Gabriela Torres">
+          </div>
+          <div class="form-group">
+            <label>Cédula / ID</label>
+            <input type="text" id="est-cedula" placeholder="Ej: 0912345678">
+          </div>
+          <div class="form-group">
+            <label>Carrera</label>
+            <input type="text" id="est-carrera" placeholder="Ej: Administración">
+          </div>
+          <div class="form-group">
+            <label>Contacto (WhatsApp/cel)</label>
+            <input type="text" id="est-contacto" placeholder="Ej: 0991234567">
+          </div>
+          <div class="form-group full" style="flex-direction:row;gap:10px;align-items:flex-end">
+            <button class="btn btn-primary" id="est-save-btn" onclick="guardarEstudiante()">💾 Guardar estudiante</button>
+            <button class="btn btn-secondary" id="est-cancel-btn" onclick="cancelarEditEst()" style="display:none">✕ Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Cédula</th><th>Carrera</th><th>Contacto</th><th>Tareas</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-estudiantes"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ASIGNATURAS -->
+    <div class="page" id="page-asignaturas">
+      <div class="page-header"><h1>📚 Asignaturas</h1><p>Registra las materias de tu carrera</p></div>
+      <div class="form-card">
+        <h2>➕ Nueva Asignatura</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre de la asignatura</label>
+            <input type="text" id="asig-nombre" placeholder="Ej: Estadística Empresarial">
+          </div>
+          <div class="form-group">
+            <label>Código</label>
+            <input type="text" id="asig-codigo" placeholder="Ej: EST-101">
+          </div>
+          <div class="form-group">
+            <label>Docente</label>
+            <input type="text" id="asig-docente" placeholder="Nombre del profesor/a">
+          </div>
+          <div class="form-group">
+            <label>Color identificador</label>
+            <input type="color" id="asig-color" value="#3b82f6" style="height:42px;padding:4px 8px;cursor:pointer;">
+          </div>
+          <div class="form-group full" style="flex-direction:row;gap:10px;align-items:flex-end">
+            <button class="btn btn-primary" id="asig-save-btn" onclick="guardarAsignatura()">Guardar asignatura</button>
+            <button class="btn btn-secondary" id="asig-cancel-btn" onclick="cancelarEditAsig()" style="display:none">✕ Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Código</th><th>Asignatura</th><th>Docente</th><th>Color</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-asignaturas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- GRUPOS -->
+    <div class="page" id="page-grupos">
+      <div class="page-header"><h1>👥 Grupos</h1><p>Registra tus grupos (numéricos o con letras)</p></div>
+      <div class="form-card">
+        <h2>➕ Nuevo Grupo</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Identificador del grupo</label>
+            <input type="text" id="grp-nombre" placeholder="Ej: 1, 2, A, B, Grupo-3...">
+          </div>
+          <div class="form-group">
+            <label>Descripción (opcional)</label>
+            <input type="text" id="grp-desc" placeholder="Ej: Turno mañana">
+          </div>
+          <div class="form-group full" style="flex-direction:row;gap:10px;align-items:flex-end">
+            <button class="btn btn-primary" id="grp-save-btn" onclick="guardarGrupo()">Guardar grupo</button>
+            <button class="btn btn-secondary" id="grp-cancel-btn" onclick="cancelarEditGrp()" style="display:none">✕ Cancelar</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Grupo</th><th>Descripción</th><th>Acciones</th></tr></thead>
+          <tbody id="tabla-grupos"></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- PERFIL -->
+    <div class="page" id="page-perfil">
+      <div class="page-header"><h1>🎓 Mi Perfil</h1><p>Datos del estudiante</p></div>
+      <div class="form-card" style="max-width:520px">
+        <h2>✏️ Información del estudiante</h2>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Nombres completos *</label>
+            <input type="text" id="per-nombre" placeholder="Ej: William Proaño Martínez">
+          </div>
+          <div class="form-group">
+            <label>Cédula / ID</label>
+            <input type="text" id="per-cedula" placeholder="Ej: 0912345678">
+          </div>
+          <div class="form-group">
+            <label>Carrera</label>
+            <input type="text" id="per-carrera" placeholder="Ej: Administración de Empresas">
+          </div>
+          <div class="form-group">
+            <label>Semestre / Nivel</label>
+            <input type="text" id="per-semestre" placeholder="Ej: 5to Semestre">
+          </div>
+          <div class="form-group">
+            <label>Modalidad</label>
+            <select id="per-modalidad">
+              <option value="">-- Selecciona --</option>
+              <option value="Presencial">Presencial</option>
+              <option value="En línea">En línea</option>
+              <option value="Semipresencial">Semipresencial</option>
+            </select>
+          </div>
+          <div class="form-group full" style="flex-direction:row;gap:10px;align-items:flex-end">
+            <button class="btn btn-primary" onclick="guardarPerfil()">💾 Guardar perfil</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-card" style="max-width:520px;margin-top:0" id="perfil-preview-card" style="display:none">
+        <h2>👤 Perfil guardado</h2>
+        <div id="perfil-preview"></div>
+      </div>
+    </div>
+
+    <!-- RESPALDO -->
+    <div class="page" id="page-respaldo">
+      <div class="page-header"><h1>💾 Respaldo de Datos</h1><p>Exporta o importa todos tus datos</p></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;">
+        <!-- EXPORTAR -->
+        <div class="form-card">
+          <h2>📤 Exportar datos</h2>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Descarga un archivo <strong>.json</strong> con todas tus actividades, asignaturas, grupos y perfil. Guárdalo en tu PC o USB como respaldo.
+          </p>
+          <div id="export-stats" style="background:var(--bg3);border-radius:9px;padding:12px;margin-bottom:16px;font-size:13px;"></div>
+          <button class="btn btn-primary" onclick="exportarDatos()" style="width:100%">⬇️ Descargar respaldo (.json)</button>
+        </div>
+        <!-- IMPORTAR -->
+        <div class="form-card">
+          <h2>📥 Importar / Restaurar</h2>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Selecciona un archivo <strong>.json</strong> de respaldo para restaurar tus datos. <span style="color:var(--red);font-weight:600">⚠️ Esto reemplazará los datos actuales.</span>
+          </p>
+          <div class="file-zone" onclick="document.getElementById('import-file').click()" style="margin-bottom:14px;">
+            <div class="icon">📂</div>
+            <p>Haz clic para seleccionar el <strong>archivo de respaldo</strong></p>
+            <div class="file-name" id="import-file-name">Ningún archivo seleccionado</div>
+          </div>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="previsualizarImport(this)">
+          <div id="import-preview" style="display:none;background:var(--bg3);border-radius:9px;padding:12px;margin-bottom:14px;font-size:13px;"></div>
+          <button class="btn btn-danger" onclick="importarDatos()" id="import-btn" style="width:100%;display:none">✅ Restaurar datos</button>
+        </div>
+        <!-- LIMPIAR HUERFANOS -->
+        <div class="form-card">
+          <h2>🧹 Liberar espacio</h2>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Elimina archivos temporales y datos viejos que quedaron en el navegador. <strong>No borra tus actividades ni archivos actuales.</strong> Úsalo si tienes problemas al guardar.
+          </p>
+          <div id="espacio-info" style="background:var(--bg3);border-radius:9px;padding:12px;margin-bottom:14px;font-size:13px;"></div>
+          <button class="btn btn-secondary" onclick="limpiarYMostrar()" style="width:100%">🧹 Limpiar archivos huérfanos</button>
+        </div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Elimina todos los datos de la aplicación. <strong style="color:var(--red)">Esta acción no se puede deshacer.</strong> Se recomienda exportar un respaldo antes.
+          </p>
+          <button class="btn btn-danger" onclick="limpiarTodo()" style="width:100%">🗑️ Eliminar todo</button>
+        </div>
+      </div>
+    </div>
+
+<!-- MODAL NUEVA/EDITAR ACTIVIDAD -->
+<div class="modal-overlay" id="modal-actividad">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Nueva Actividad</h2>
+      <button class="modal-close" onclick="closeModal('modal-actividad')">✕</button>
+    </div>
+    <input type="hidden" id="act-id">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Tipo de actividad *</label>
+        <select id="act-tipo">
+          <option value="">-- Selecciona --</option>
+          <option value="Tarea">Tarea</option>
+          <option value="Test">Test</option>
+          <option value="Análisis de Casos">Análisis de Casos</option>
+          <option value="Trabajo de Investigación">Trabajo de Investigación</option>
+          <option value="Título de Actividad">Título de Actividad</option>
+          <option value="Trabajo Práctico Experimental">Trabajo Práctico Experimental</option>
+          <option value="Foro">Foro</option>
+          <option value="Componente Práctico">Componente Práctico</option>
+          <option value="Taller">Taller</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Asignatura *</label>
+        <select id="act-asig"></select>
+      </div>
+      <div class="form-group full">
+        <label>Título de la actividad *</label>
+        <input type="text" id="act-titulo" placeholder="Ej: Análisis de regresión lineal">
+      </div>
+      <div class="form-group full">
+        <label>Descripción</label>
+        <textarea id="act-desc" placeholder="Instrucciones o detalles de la actividad..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Fecha de apertura</label>
+        <input type="date" id="act-apertura">
+      </div>
+      <div class="form-group">
+        <label>Fecha de cierre *</label>
+        <input type="date" id="act-cierre">
+      </div>
+      <div class="form-group">
+        <label>⏰ Hora límite de entrega</label>
+        <input type="time" id="act-hora-cierre" value="23:59">
+      </div>
+      <div class="form-group">
+        <label>Grupo</label>
+        <select id="act-grupo"></select>
+      </div>
+      <div class="form-group">
+        <label>🧑‍🎓 Estudiante</label>
+        <select id="act-estudiante"></select>
+      </div>
+      <div class="form-group">
+        <label>Puntaje / Nota máxima</label>
+        <input type="number" id="act-puntaje" placeholder="Ej: 10" min="0" max="100">
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">📎 Enlace del archivo del profesor</label>
+      <div style="display:flex;align-items:center;gap:8px;background:#fafbfc;border:2px solid var(--border);border-radius:9px;padding:4px 4px 4px 12px;transition:.18s;" onfocusin="this.style.borderColor='var(--cian)'" onfocusout="this.style.borderColor='var(--border)'">
+        <span style="font-size:1.1rem;">🔗</span>
+        <input type="url" id="link-profe" placeholder="https://drive.google.com/... o cualquier enlace" style="border:none;background:transparent;flex:1;font-family:var(--font);font-size:.82rem;outline:none;color:var(--text);padding:6px 0;">
+        <button type="button" onclick="document.getElementById('link-profe').value=''" style="background:var(--bg3);border:none;color:var(--text2);padding:5px 8px;border-radius:6px;cursor:pointer;font-size:.72rem;font-family:var(--font);">✕</button>
+      </div>
+      <p style="font-size:.68rem;color:var(--text2);margin-top:5px;">📌 Sube el archivo a Google Drive, OneDrive o Dropbox y pega el enlace aquí</p>
+    </div>
+    <div style="margin-top:12px;">
+      <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">📤 Enlace de mi tarea entregada</label>
+      <div style="display:flex;align-items:center;gap:8px;background:#fafbfc;border:2px solid var(--border);border-radius:9px;padding:4px 4px 4px 12px;transition:.18s;" onfocusin="this.style.borderColor='var(--cian)'" onfocusout="this.style.borderColor='var(--border)'">
+        <span style="font-size:1.1rem;">✏️</span>
+        <input type="url" id="link-tarea" placeholder="https://drive.google.com/... o cualquier enlace" style="border:none;background:transparent;flex:1;font-family:var(--font);font-size:.82rem;outline:none;color:var(--text);padding:6px 0;">
+        <button type="button" onclick="document.getElementById('link-tarea').value=''" style="background:var(--bg3);border:none;color:var(--text2);padding:5px 8px;border-radius:6px;cursor:pointer;font-size:.72rem;font-family:var(--font);">✕</button>
+      </div>
+      <p style="font-size:.68rem;color:var(--text2);margin-top:5px;">📌 Sube tu tarea a Google Drive, OneDrive o Dropbox y pega el enlace aquí</p>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeModal('modal-actividad')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarActividad()">💾 Guardar actividad</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal-overlay" id="modal-detalle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="det-titulo-h">Detalle</h2>
+      <button class="modal-close" onclick="closeModal('modal-detalle')">✕</button>
+    </div>
+    <div id="det-content"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-danger btn-sm" id="det-del-btn">🗑️ Eliminar</button>
+      <button class="btn btn-secondary btn-sm" id="det-edit-btn">✏️ Editar</button>
+      <button class="btn btn-green btn-sm" id="det-entregar-btn">✅ Marcar entregada</button>
+      <button class="btn btn-secondary btn-sm" id="det-desmarcar-btn" style="display:none">↩️ Desmarcar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── FIREBASE ────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyAUvMWFnuaNXmyh7rjvLPNgjtiS0qQWYGM",
+  authDomain: "tecnico-pro.firebaseapp.com",
+  projectId: "tecnico-pro",
+  storageBucket: "tecnico-pro.firebasestorage.app",
+  messagingSenderId: "883534120062",
+  appId: "1:883534120062:web:72b5343763fd1d3582442f"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function fbSaveTareas(){
+  const perfil = JSON.parse(localStorage.getItem('unemi_perfil')||'{}');
+  db.collection('willismar-tareas').doc('willismar').set({
+    actividades, asignaturas, grupos, estudiantes, perfil,
+    updated: new Date().toISOString()
+  }).then(()=>mostrarSync('☁️ Guardado en la nube'))
+    .catch(e=>console.warn('FB save:',e));
+}
+
+function fbLoadTareas(){
+  mostrarSync('⏳ Sincronizando...');
+  db.collection('willismar-tareas').doc('willismar').get().then(snap=>{
+    if(snap.exists){
+      const d=snap.data();
+      if(d.actividades){ actividades=d.actividades; localStorage.setItem('unemi_acts',JSON.stringify(actividades)); }
+      if(d.asignaturas){ asignaturas=d.asignaturas; localStorage.setItem('unemi_asigs',JSON.stringify(asignaturas)); }
+      if(d.grupos){ grupos=d.grupos; localStorage.setItem('unemi_grupos',JSON.stringify(grupos)); }
+      if(d.estudiantes){ estudiantes=d.estudiantes; localStorage.setItem('unemi_estudiantes',JSON.stringify(estudiantes)); }
+      if(d.perfil){ localStorage.setItem('unemi_perfil',JSON.stringify(d.perfil)); }
+      renderDashboard(); fillSelects(); updateNotif(); actualizarHeaderPerfil();
+      mostrarSync('☁️ Sincronizado');
+    } else { mostrarSync('☁️ Nube lista'); }
+  }).catch(e=>{ mostrarSync('⚠️ Sin conexión'); console.warn('FB load:',e); });
+}
+
+function mostrarSync(msg){
+  let el=document.getElementById('sync-status-tareas');
+  if(!el){
+    el=document.createElement('span');el.id='sync-status-tareas';
+    el.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--azulOscuro);color:rgba(255,255,255,.7);font-size:.7rem;font-weight:700;padding:4px 14px;border-radius:20px;z-index:999;border:1px solid rgba(255,255,255,.1);';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+}
+
+// ─── DATA ────────────────────────────────────────────────────
+let actividades = JSON.parse(localStorage.getItem('unemi_acts') || '[]');
+let asignaturas = JSON.parse(localStorage.getItem('unemi_asigs') || '[]');
+let grupos = JSON.parse(localStorage.getItem('unemi_grupos') || '[]');
+let estudiantes = JSON.parse(localStorage.getItem('unemi_estudiantes') || '[]');
+let archivoProfe = null, archivoTarea = null;
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
+let currentDetId = null;
+
+function save(key, data){ localStorage.setItem(key, JSON.stringify(data)); fbSaveTareas(); }
+
+// ─── NAVIGATION ───────────────────────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='dashboard') renderDashboard();
+  if(id==='actividades'){ fillSelects(); renderActividades(); }
+  if(id==='repositorio'){ fillRepoSelects(); renderRepositorio(); }
+  if(id==='calendario') renderCalendario();
+  if(id==='asignaturas') renderTablaAsignaturas();
+  if(id==='grupos') renderTablaGrupos();
+  if(id==='estudiantes') renderTablaEstudiantes();
+  if(id==='perfil') cargarFormPerfil();
+  if(id==='respaldo'){ renderExportStats(); mostrarEspacio(); }
+  document.getElementById('notif-panel').classList.remove('open');
+}
+
+function switchTab(tabId){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>{
+    b.classList.remove('active');
+    document.querySelectorAll('.tab-content')[i].classList.remove('active');
+  });
+  const idx = ['tab-pendientes','tab-entregadas','tab-todas'].indexOf(tabId);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+  renderActividades();
+}
+
+// ─── UTILS ────────────────────────────────────────────────────
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function today(){ return new Date().toISOString().slice(0,10); }
+function diffDays(d){ return Math.ceil((new Date(d)-new Date(today()))/(86400000)); }
+function fmtDate(d){ if(!d)return'—'; const [y,m,dd]=d.split('-'); return `${dd}/${m}/${y}`; }
+
+function urgenciaInfo(act){
+  if(act.entregada) return {label:'Entregada',cls:'urgente-vencida'};
+  const d=diffDays(act.cierre);
+  if(!act.cierre) return {label:'Sin fecha',cls:'urgente-ok'};
+  if(d<0) return {label:'Vencida',cls:'urgente-vencida'};
+  if(d===0) return {label:'¡Hoy!',cls:'urgente-hoy'};
+  if(d<=3) return {label:`${d}d`,cls:'urgente-pronto'};
+  return {label:`${d}d`,cls:'urgente-ok'};
+}
+
+function tipoClass(tipo){
+  const map={'Tarea':'tipo-tarea','Test':'tipo-test','Análisis de Casos':'tipo-casos',
+    'Trabajo de Investigación':'tipo-investigacion','Foro':'tipo-foro',
+    'Trabajo Práctico Experimental':'tipo-practico','Componente Práctico':'tipo-componente',
+    'Taller':'tipo-taller','Título de Actividad':'tipo-titulo'};
+  return map[tipo]||'tipo-tarea';
+}
+
+function toast(msg, type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+(type||'');
+  setTimeout(()=>t.className='',2800);
+}
+
+// ─── MODAL ────────────────────────────────────────────────────
+function openModal(mode, id=null){
+  fillSelects();
+  if(mode==='nueva'){
+    document.getElementById('modal-title').textContent='Nueva Actividad';
+    document.getElementById('act-id').value='';
+    ['act-tipo','act-asig','act-titulo','act-desc','act-apertura','act-cierre','act-grupo','act-puntaje','act-estudiante']
+      .forEach(x=>document.getElementById(x).value='');
+    document.getElementById('act-hora-cierre').value='23:59';
+    document.getElementById('link-profe').value='';
+    document.getElementById('link-tarea').value='';
+    archivoProfe=null; archivoTarea=null;
+  } else {
+    const act = actividades.find(a=>a.id===id);
+    if(!act)return;
+    document.getElementById('modal-title').textContent='Editar Actividad';
+    document.getElementById('act-id').value=act.id;
+    document.getElementById('act-tipo').value=act.tipo||'';
+    document.getElementById('act-asig').value=act.asig||'';
+    document.getElementById('act-titulo').value=act.titulo||'';
+    document.getElementById('act-desc').value=act.desc||'';
+    document.getElementById('act-apertura').value=act.apertura||'';
+    document.getElementById('act-cierre').value=act.cierre||'';
+    document.getElementById('act-grupo').value=act.grupo||'';
+    document.getElementById('act-estudiante').value=act.estudiante||'';
+    document.getElementById('act-puntaje').value=act.puntaje||'';
+    document.getElementById('act-hora-cierre').value=act.horaCierre||'23:59';
+    document.getElementById('link-profe').value = act.linkProfe||'';
+    document.getElementById('link-tarea').value = act.linkTarea||'';
+    archivoProfe=null; archivoTarea=null;
+  }
+  document.getElementById('modal-actividad').classList.add('open');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+// ─── ARCHIVOS: se guardan en claves separadas del localStorage ──
+function saveFile(data, nombre){
+  const key = 'file_' + uid();
+  // Intentar guardar; si falla, limpiar basura y reintentar una vez
+  for(let intento=0; intento<2; intento++){
+    try {
+      localStorage.setItem(key, JSON.stringify({nombre, data}));
+      return key;
+    } catch(e){
+      if(intento===0){
+        limpiarArchivosBasura(); // limpia base64 viejos y huérfanos
+      } else {
+        toast('❌ No hay espacio suficiente. El archivo es demasiado grande.','error');
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+function loadFile(key){
+  if(!key) return null;
+  try { return JSON.parse(localStorage.getItem(key)||'null'); } catch(e){ return null; }
+}
+
+function deleteFile(key){
+  if(key) try { localStorage.removeItem(key); } catch(e){}
+}
+
+// Limpia: base64 viejos guardados directamente en actividades, y claves file_ huérfanas
+function limpiarArchivosBasura(){
+  // 1. Quitar base64 incrustados en actividades (versión vieja)
+  let cambio=false;
+  actividades.forEach(a=>{
+    if(a.archivoProfe){ delete a.archivoProfe; cambio=true; }
+    if(a.archivoTarea){ delete a.archivoTarea; cambio=true; }
+  });
+  if(cambio) try{ save('unemi_acts', actividades); }catch(e){}
+
+  // 2. Quitar base64 en el repo (versión vieja)
+  try{
+    let repo=JSON.parse(localStorage.getItem('unemi_repo')||'[]');
+    let repoCambio=false;
+    repo.forEach(r=>{
+      if(r.archivoProfe){ delete r.archivoProfe; repoCambio=true; }
+      if(r.archivoTarea){ delete r.archivoTarea; repoCambio=true; }
+    });
+    if(repoCambio) localStorage.setItem('unemi_repo', JSON.stringify(repo));
+  }catch(e){}
+
+  // 3. Borrar claves file_ que ya no referencie ninguna actividad ni repo
+  try{
+    const keysEnUso=new Set();
+    actividades.forEach(a=>{ if(a.archivoProfeKey) keysEnUso.add(a.archivoProfeKey); if(a.archivoTareaKey) keysEnUso.add(a.archivoTareaKey); });
+    let repo=JSON.parse(localStorage.getItem('unemi_repo')||'[]');
+    repo.forEach(r=>{ if(r.archivoProfeKey) keysEnUso.add(r.archivoProfeKey); if(r.archivoTareaKey) keysEnUso.add(r.archivoTareaKey); });
+    Object.keys(localStorage).forEach(k=>{ if(k.startsWith('file_') && !keysEnUso.has(k)) localStorage.removeItem(k); });
+  }catch(e){}
+}
+
+function handleFileProfe(input){
+  const f=input.files[0]; if(!f)return;
+  if(f.size > 15*1024*1024){
+    toast('❌ Archivo muy grande (máx 15MB)','error');
+    input.value=''; return;
+  }
+  document.getElementById('file-profe-name').textContent='⏳ Cargando: '+f.name+'...';
+  archivoProfe = null;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    archivoProfe={nombre:f.name, data:e.target.result};
+    document.getElementById('file-profe-name').textContent='✅ '+f.name;
+  };
+  reader.onerror=()=>{
+    toast('❌ Error al leer el archivo del profesor','error');
+    document.getElementById('file-profe-name').textContent='Error al cargar';
+  };
+  reader.readAsDataURL(f);
+}
+
+function handleFileTarea(input){
+  const f=input.files[0]; if(!f)return;
+  if(f.size > 15*1024*1024){
+    toast('❌ Archivo muy grande (máx 15MB)','error');
+    input.value=''; return;
+  }
+  document.getElementById('file-tarea-name').textContent='⏳ Cargando: '+f.name+'...';
+  archivoTarea = null;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    archivoTarea={nombre:f.name, data:e.target.result};
+    document.getElementById('file-tarea-name').textContent='✅ '+f.name;
+  };
+  reader.onerror=()=>{
+    toast('❌ Error al leer tu archivo de tarea','error');
+    document.getElementById('file-tarea-name').textContent='Error al cargar';
+  };
+  reader.readAsDataURL(f);
+}
+
+// ─── GUARDAR ACTIVIDAD ────────────────────────────────────────
+function guardarActividad(){
+  const tipo=document.getElementById('act-tipo').value;
+  const asig=document.getElementById('act-asig').value;
+  const titulo=document.getElementById('act-titulo').value.trim();
+  const cierre=document.getElementById('act-cierre').value;
+  if(!tipo||!titulo||!cierre){ toast('Completa los campos obligatorios (*)','error'); return; }
+
+  const id=document.getElementById('act-id').value;
+  const base = id ? actividades.find(a=>a.id===id) : {};
+
+  const act = {
+    ...base,
+    id: id||uid(), tipo, asig,
+    titulo, desc:document.getElementById('act-desc').value,
+    apertura:document.getElementById('act-apertura').value, cierre,
+    horaCierre:document.getElementById('act-hora-cierre').value||'23:59',
+    grupo:document.getElementById('act-grupo').value,
+    estudiante:document.getElementById('act-estudiante').value,
+    puntaje:document.getElementById('act-puntaje').value,
+    entregada: base.entregada||false,
+    linkProfe: document.getElementById('link-profe').value.trim()||null,
+    linkTarea: document.getElementById('link-tarea').value.trim()||null,
+    creadoEn: base.creadoEn||new Date().toISOString()
+  };
+
+  // Limpiar campos viejos de archivo si existían
+  delete act.archivoProfe; delete act.archivoTarea;
+  delete act.archivoProfeKey; delete act.archivoTareaKey;
+  delete act.archivoProfeNombre; delete act.archivoTareaNombre;
+
+  if(id){ const i=actividades.findIndex(a=>a.id===id); actividades[i]=act; }
+  else { actividades.push(act); }
+
+  save('unemi_acts', actividades);
+  closeModal('modal-actividad');
+  renderActividades(); renderDashboard(); updateNotif();
+  toast('✅ Actividad guardada correctamente');
+}
+
+// ─── ELIMINAR ─────────────────────────────────────────────────
+function eliminarActividad(id){
+  if(!confirm('¿Eliminar esta actividad?'))return;
+  const act=actividades.find(a=>a.id===id);
+  if(act){ deleteFile(act.archivoProfeKey); deleteFile(act.archivoTareaKey); }
+  actividades=actividades.filter(a=>a.id!==id);
+  save('unemi_acts', actividades);
+  closeModal('modal-detalle');
+  renderActividades(); renderDashboard(); updateNotif();
+  toast('🗑️ Actividad eliminada','warn');
+}
+
+function marcarEntregada(id){
+  const act=actividades.find(a=>a.id===id); if(!act)return;
+  if(act.entregada){ toast('Esta actividad ya está marcada como entregada','warn'); return; }
+  act.entregada=true;
+  // Guardar snapshot en repositorio
+  let repo=JSON.parse(localStorage.getItem('unemi_repo')||'[]');
+  const yaExiste=repo.find(r=>r.actId===act.id);
+  if(!yaExiste){
+    repo.push({
+      id: uid(),
+      actId: act.id,
+      tipo: act.tipo,
+      titulo: act.titulo,
+      desc: act.desc,
+      asig: act.asig,
+      grupo: act.grupo,
+      estudiante: act.estudiante,
+      cierre: act.cierre,
+      horaCierre: act.horaCierre,
+      puntaje: act.puntaje,
+      archivoProfeKey: act.archivoProfeKey||null,
+      archivoProfeNombre: act.archivoProfeNombre||null,
+      archivoTareaKey: act.archivoTareaKey||null,
+      archivoTareaNombre: act.archivoTareaNombre||null,
+      fechaEntrega: new Date().toISOString(),
+      creadoEn: act.creadoEn
+    });
+    save('unemi_repo', repo);
+  }
+  save('unemi_acts', actividades);
+  closeModal('modal-detalle');
+  renderActividades(); renderDashboard(); updateNotif();
+  toast('✅ ¡Entregada! Guardada en el Repositorio');
+}
+
+function desmarcarEntregada(id){
+  const act=actividades.find(a=>a.id===id); if(!act)return;
+  if(!confirm('¿Desmarcar esta actividad como entregada? Seguirá en el repositorio.')) return;
+  act.entregada=false;
+  save('unemi_acts', actividades);
+  closeModal('modal-detalle');
+  renderActividades(); renderDashboard(); updateNotif();
+  toast('↩️ Marcada como pendiente nuevamente','warn');
+}
+
+// ─── DETALLE ──────────────────────────────────────────────────
+function verDetalle(id){
+  const act=actividades.find(a=>a.id===id); if(!act)return;
+  currentDetId=id;
+  document.getElementById('det-titulo-h').textContent=act.titulo;
+  const urg=urgenciaInfo(act);
+  const asigObj=asignaturas.find(x=>x.id===act.asig);
+  const estObj=estudiantes.find(x=>x.id===act.estudiante);
+  let html=`
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+      <span class="badge ${tipoClass(act.tipo)}">${act.tipo}</span>
+      <span class="act-urgente ${urg.cls}">${urg.label}</span>
+      ${act.entregada?'<span class="badge" style="background:rgba(16,185,129,.12);color:var(--green)">✅ Entregada</span>':''}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:13px;">
+      ${estObj?`<div style="grid-column:1/-1;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:9px;padding:10px;"><span style="color:var(--text3)">🧑‍🎓 Estudiante</span><br><strong style="font-size:15px;">${estObj.nombre}</strong>${estObj.carrera?`<span style="color:var(--text3);font-size:11px;"> · ${estObj.carrera}</span>`:''}${estObj.contacto?`<br><span style="color:var(--accent2);font-size:12px;">📱 ${estObj.contacto}</span>`:''}
+      </div>`:''}
+      <div><span style="color:var(--text3)">📚 Asignatura</span><br><strong>${asigObj?asigObj.nombre:'—'}</strong></div>
+      <div><span style="color:var(--text3)">👥 Grupo</span><br><strong>${act.grupo||'—'}</strong></div>
+      <div><span style="color:var(--text3)">📅 Apertura</span><br><strong>${fmtDate(act.apertura)}</strong></div>
+      <div><span style="color:var(--text3)">⏰ Cierre</span><br><strong>${fmtDate(act.cierre)}${act.horaCierre?' — '+act.horaCierre:''}${act.horaCierre?`<span style="font-size:11px;color:var(--orange);margin-left:6px">hora límite</span>`:''}</strong></div>
+      ${act.puntaje?`<div><span style="color:var(--text3)">🎯 Puntaje</span><br><strong>${act.puntaje} pts</strong></div>`:''}
+    </div>
+    ${act.desc?`<div style="background:var(--bg3);border-radius:9px;padding:12px;margin-bottom:14px;font-size:13px;color:var(--text2);line-height:1.6;">${act.desc}</div>`:''}
+  `;
+  const fProfe = loadFile(act.archivoProfeKey);
+  const fTarea = loadFile(act.archivoTareaKey);
+  if(fProfe){
+    html+=`<div style="margin-bottom:10px;"><span style="font-size:12px;color:var(--text3);">📎 Archivo del profesor:</span><br>
+      <a href="${fProfe.data}" download="${fProfe.nombre}" style="color:var(--accent2);font-size:13px;text-decoration:none;">⬇️ ${fProfe.nombre}</a></div>`;
+  }
+  if(fTarea){
+    html+=`<div><span style="font-size:12px;color:var(--text3);">📤 Mi tarea:</span><br>
+      <a href="${fTarea.data}" download="${fTarea.nombre}" style="color:var(--green);font-size:13px;text-decoration:none;">⬇️ ${fTarea.nombre}</a></div>`;
+  }
+  document.getElementById('det-content').innerHTML=html;
+  document.getElementById('det-del-btn').onclick=()=>eliminarActividad(id);
+  document.getElementById('det-edit-btn').onclick=()=>{ closeModal('modal-detalle'); openModal('edit',id); };
+  // Botón ENTREGAR: solo visible si NO está entregada
+  const btnEntregar=document.getElementById('det-entregar-btn');
+  const btnDesmarcar=document.getElementById('det-desmarcar-btn');
+  if(act.entregada){
+    btnEntregar.style.display='none';
+    btnDesmarcar.style.display='';
+    btnDesmarcar.onclick=()=>desmarcarEntregada(id);
+  } else {
+    btnEntregar.style.display='';
+    btnDesmarcar.style.display='none';
+    btnEntregar.onclick=()=>marcarEntregada(id);
+  }
+  document.getElementById('modal-detalle').classList.add('open');
+}
+
+// ─── RENDER CARD ──────────────────────────────────────────────
+function renderCard(act){
+  const urg=urgenciaInfo(act);
+  const asigObj=asignaturas.find(x=>x.id===act.asig);
+  const estObj=estudiantes.find(x=>x.id===act.estudiante);
+  const tc=tipoClass(act.tipo);
+  return `<div class="act-card ${tc}" onclick="verDetalle('${act.id}')">
+    <div class="act-card-top">
+      <div>
+        <span class="act-tipo badge ${tc}">${act.tipo}</span>
+        <h3 style="margin-top:6px">${act.titulo}</h3>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="act-urgente ${urg.cls}">${urg.label}</span>
+        <button onclick="event.stopPropagation();imprimirActividad('${act.id}')" title="Imprimir esta actividad" style="background:var(--bg3);border:1px solid var(--border);color:var(--text2);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .18s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">🖨️</button>
+      </div>
+    </div>
+    <div class="meta">
+      ${asigObj?`<span class="meta-item">📚 ${asigObj.nombre}</span>`:''}
+      ${act.grupo?`<span class="meta-item">👥 Grupo ${act.grupo}</span>`:''}
+      ${act.cierre?`<span class="meta-item">⏰ ${fmtDate(act.cierre)}${act.horaCierre?' '+act.horaCierre:''}</span>`:''}
+      ${estObj?`<span class="meta-item" style="color:var(--accent2)">🧑‍🎓 ${estObj.nombre.split(' ')[0]}</span>`:''}
+    </div>
+    ${act.archivoProfeKey||act.archivoTareaKey?`<div style="margin-top:8px;display:flex;gap:6px;">
+      ${act.archivoProfeKey?'<span style="font-size:11px;color:var(--text3)">📄 Archivo profe</span>':''}
+      ${act.archivoTareaKey?'<span style="font-size:11px;color:var(--green)">📤 Mi tarea</span>':''}
+    </div>`:''}
+  </div>`;
+}
+
+// ─── RENDER ACTIVIDADES ───────────────────────────────────────
+function renderActividades(){
+  const searchEl=document.querySelector('.search-input');
+  const q=(searchEl?searchEl.value:'').toLowerCase();
+  const tipo=document.getElementById('fil-tipo').value;
+  const asig=document.getElementById('fil-asig').value;
+  const grupo=document.getElementById('fil-grupo').value;
+  const estudiante=document.getElementById('fil-estudiante').value;
+
+  let filtered=actividades.filter(a=>{
+    if(q && !a.titulo.toLowerCase().includes(q)&&!(a.desc||'').toLowerCase().includes(q)) return false;
+    if(tipo && a.tipo!==tipo) return false;
+    if(asig && a.asig!==asig) return false;
+    if(grupo && a.grupo!==grupo) return false;
+    if(estudiante && a.estudiante!==estudiante) return false;
+    return true;
+  });
+
+  const pendientes=filtered.filter(a=>!a.entregada).sort((a,b)=>a.cierre>b.cierre?1:-1);
+  const entregadas=filtered.filter(a=>a.entregada);
+
+  const rend=(list,el)=>{
+    const c=document.getElementById(el);
+    if(!list.length){ c.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><p>No hay actividades aquí</p></div>`; return; }
+    c.innerHTML=list.map(renderCard).join('');
+  };
+  rend(pendientes,'cards-pendientes');
+  rend(entregadas,'cards-entregadas');
+  rend(filtered.sort((a,b)=>a.cierre>b.cierre?1:-1),'cards-todas');
+}
+
+// ─── FILL SELECTS ─────────────────────────────────────────────
+function fillSelects(){
+  const asigSels=['act-asig','fil-asig'];
+  asigSels.forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const val=el.value;
+    el.innerHTML='<option value="">— Asignatura —</option>'+asignaturas.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+    el.value=val;
+  });
+  const grpSels=['act-grupo','fil-grupo'];
+  grpSels.forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const val=el.value;
+    el.innerHTML='<option value="">— Grupo —</option>'+grupos.map(g=>`<option value="${g.nombre}">${g.nombre}${g.desc?' – '+g.desc:''}</option>`).join('');
+    el.value=val;
+  });
+  const estSels=['act-estudiante','fil-estudiante'];
+  estSels.forEach(id=>{
+    const el=document.getElementById(id); if(!el)return;
+    const val=el.value;
+    el.innerHTML='<option value="">— Estudiante —</option>'+estudiantes.map(e=>`<option value="${e.id}">${e.nombre}${e.carrera?' ('+e.carrera+')':''}</option>`).join('');
+    el.value=val;
+  });
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+function renderDashboard(){
+  const now=new Date();
+  document.getElementById('dash-fecha').textContent=now.toLocaleDateString('es-EC',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const pend=actividades.filter(a=>!a.entregada&&a.cierre&&diffDays(a.cierre)>=0).length;
+  const venc=actividades.filter(a=>!a.entregada&&a.cierre&&diffDays(a.cierre)<0).length;
+  const ent=actividades.filter(a=>a.entregada).length;
+  const hoy=actividades.filter(a=>!a.entregada&&diffDays(a.cierre)===0).length;
+  const enRepo=JSON.parse(localStorage.getItem('unemi_repo')||'[]').length;
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat-card" style="--accent-color:var(--accent)"><div class="num">${actividades.length}</div><div class="label">Total actividades</div></div>
+    <div class="stat-card" style="--accent-color:var(--orange)"><div class="num">${pend}</div><div class="label">Pendientes</div></div>
+    <div class="stat-card" style="--accent-color:var(--red)"><div class="num">${hoy}</div><div class="label">Vencen hoy</div></div>
+    <div class="stat-card" style="--accent-color:var(--green)"><div class="num">${ent}</div><div class="label">Entregadas</div></div>
+    <div class="stat-card" style="--accent-color:var(--purple)" onclick="showPage('repositorio')" style="cursor:pointer"><div class="num">${enRepo}</div><div class="label">🗂️ En Repositorio</div></div>
+    <div class="stat-card" style="--accent-color:var(--text3)"><div class="num">${venc}</div><div class="label">Vencidas</div></div>
+  `;
+  const proximas=actividades.filter(a=>!a.entregada&&a.cierre&&diffDays(a.cierre)>=0).sort((a,b)=>a.cierre>b.cierre?1:-1).slice(0,6);
+  const cont=document.getElementById('dash-proximas');
+  if(!proximas.length){ cont.innerHTML=`<div class="empty"><div class="empty-icon">🎉</div><p>¡No tienes tareas pendientes!</p></div>`; return; }
+  cont.innerHTML=proximas.map(renderCard).join('');
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────
+function updateNotif(){
+  const urgent=actividades.filter(a=>{
+    if(a.entregada||!a.cierre)return false;
+    const d=diffDays(a.cierre); return d<=3;
+  }).sort((a,b)=>a.cierre>b.cierre?1:-1);
+  const badge=document.getElementById('notif-count');
+  if(urgent.length){ badge.textContent=urgent.length; badge.classList.remove('hidden'); }
+  else { badge.classList.add('hidden'); }
+  document.getElementById('notif-panel-count').textContent=urgent.length+' pendientes';
+  const list=document.getElementById('notif-list');
+  if(!urgent.length){ list.innerHTML=`<div class="notif-empty">✅ Sin notificaciones urgentes</div>`; return; }
+  list.innerHTML=urgent.map(a=>{
+    const d=diffDays(a.cierre);
+    const cls=d<=0?'urgent':'soon';
+    const sub=d<0?`Venció hace ${Math.abs(d)} día(s)`:d===0?'¡Vence HOY!':d===1?'Vence mañana':`Vence en ${d} días`;
+    const asigObj=asignaturas.find(x=>x.id===a.asig);
+    return `<div class="notif-item ${cls}" onclick="verDetalle('${a.id}');toggleNotif()">
+      <div class="notif-title">${a.titulo}</div>
+      <div class="notif-sub">${asigObj?asigObj.nombre+' · ':''}<span style="color:${d<=0?'var(--red)':'var(--orange)'}">${sub}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function toggleNotif(){
+  const p=document.getElementById('notif-panel');
+  p.classList.toggle('open');
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#notif-panel')&&!e.target.closest('#notif-btn'))
+    document.getElementById('notif-panel').classList.remove('open');
+});
+
+// ─── CALENDARIO ───────────────────────────────────────────────
+function renderCalendario(){
+  const wrap=document.getElementById('cal-wrap');
+  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const dias=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const colores=['#3b82f6','#8b5cf6','#f59e0b','#10b981','#ec4899','#06b6d4','#f97316','#a855f7','#84cc16'];
+  const todayStr=today();
+
+  const first=new Date(calYear,calMonth,1);
+  const last=new Date(calYear,calMonth+1,0);
+  const startDow=first.getDay();
+  const totalDays=last.getDate();
+
+  let cells='';
+  let day=1-startDow;
+  for(let r=0;r<6;r++){
+    for(let c=0;c<7;c++,day++){
+      const date=new Date(calYear,calMonth,day);
+      const dStr=date.toISOString().slice(0,10);
+      const isOther=day<1||day>totalDays;
+      const isToday=dStr===todayStr;
+      const acts=actividades.filter(a=>a.cierre===dStr);
+      const dots=acts.slice(0,3).map((a,i)=>{
+        const tc=tipoClass(a.tipo);
+        const col=colores[i%colores.length];
+        return `<div class="cal-dot" style="background:${col}20;color:${col};border:1px solid ${col}40" onclick="event.stopPropagation();verDetalle('${a.id}')" title="${a.titulo}">${a.titulo.slice(0,18)}${a.titulo.length>18?'…':''}</div>`;
+      }).join('');
+      cells+=`<div class="cal-cell${isOther?' other-month':''}${isToday?' today':''}">
+        <div class="day-num">${isOther?'':day}</div>${isOther?'':dots}
+      </div>`;
+    }
+    if(day>totalDays+1&&r>3)break;
+  }
+
+  wrap.innerHTML=`
+    <div class="cal-header">
+      <h2>${meses[calMonth]} ${calYear}</h2>
+      <div class="cal-nav">
+        <button onclick="calNav(-1)">‹</button>
+        <button onclick="calToday()">Hoy</button>
+        <button onclick="calNav(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-grid">
+      ${dias.map(d=>`<div class="cal-day-name">${d}</div>`).join('')}
+      ${cells}
+    </div>
+  `;
+}
+function calNav(d){ calMonth+=d; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendario(); }
+function calToday(){ calMonth=new Date().getMonth(); calYear=new Date().getFullYear(); renderCalendario(); }
+
+// ─── ASIGNATURAS ──────────────────────────────────────────────
+let _editAsigId=null;
+function guardarAsignatura(){
+  const nombre=document.getElementById('asig-nombre').value.trim();
+  if(!nombre){ toast('Escribe el nombre de la asignatura','error'); return; }
+  if(_editAsigId){
+    const a=asignaturas.find(x=>x.id===_editAsigId);
+    if(a){ a.nombre=nombre; a.codigo=document.getElementById('asig-codigo').value.trim(); a.docente=document.getElementById('asig-docente').value.trim(); a.color=document.getElementById('asig-color').value; }
+    _editAsigId=null;
+    document.getElementById('asig-save-btn').textContent='Guardar asignatura';
+    document.getElementById('asig-cancel-btn').style.display='none';
+    toast('✏️ Asignatura actualizada');
+  } else {
+    asignaturas.push({ id:uid(), nombre, codigo:document.getElementById('asig-codigo').value.trim(), docente:document.getElementById('asig-docente').value.trim(), color:document.getElementById('asig-color').value });
+    toast('📚 Asignatura registrada');
+  }
+  save('unemi_asigs', asignaturas);
+  ['asig-nombre','asig-codigo','asig-docente'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('asig-color').value='#3b82f6';
+  renderTablaAsignaturas(); fillSelects();
+}
+function editarAsignatura(id){
+  const a=asignaturas.find(x=>x.id===id); if(!a)return;
+  _editAsigId=id;
+  document.getElementById('asig-nombre').value=a.nombre;
+  document.getElementById('asig-codigo').value=a.codigo||'';
+  document.getElementById('asig-docente').value=a.docente||'';
+  document.getElementById('asig-color').value=a.color||'#3b82f6';
+  document.getElementById('asig-save-btn').textContent='💾 Actualizar asignatura';
+  document.getElementById('asig-cancel-btn').style.display='inline-flex';
+  document.getElementById('asig-nombre').focus();
+  document.getElementById('asig-nombre').scrollIntoView({behavior:'smooth',block:'center'});
+  toast('✏️ Editando — modifica y guarda','warn');
+}
+function cancelarEditAsig(){
+  _editAsigId=null;
+  ['asig-nombre','asig-codigo','asig-docente'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('asig-color').value='#3b82f6';
+  document.getElementById('asig-save-btn').textContent='Guardar asignatura';
+  document.getElementById('asig-cancel-btn').style.display='none';
+}
+function eliminarAsignatura(id){
+  if(!confirm('¿Eliminar asignatura?'))return;
+  asignaturas=asignaturas.filter(a=>a.id!==id);
+  save('unemi_asigs', asignaturas);
+  renderTablaAsignaturas(); fillSelects();
+  toast('Asignatura eliminada','warn');
+}
+function renderTablaAsignaturas(){
+  const tb=document.getElementById('tabla-asignaturas');
+  if(!asignaturas.length){ tb.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px">No hay asignaturas registradas</td></tr>`; return; }
+  tb.innerHTML=asignaturas.map(a=>`<tr>
+    <td><span class="badge" style="background:${a.color}20;color:${a.color}">${a.codigo||'—'}</span></td>
+    <td><strong>${a.nombre}</strong></td>
+    <td>${a.docente||'—'}</td>
+    <td><div style="width:20px;height:20px;border-radius:5px;background:${a.color};display:inline-block;vertical-align:middle"></div></td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-secondary btn-sm" onclick="editarAsignatura('${a.id}')">✏️ Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="eliminarAsignatura('${a.id}')">🗑️</button>
+    </td>
+  </tr>`).join('');
+}
+
+// ─── GRUPOS ───────────────────────────────────────────────────
+let _editGrpNombre=null;
+function guardarGrupo(){
+  const nombre=document.getElementById('grp-nombre').value.trim();
+  if(!nombre){ toast('Escribe el identificador del grupo','error'); return; }
+  if(_editGrpNombre){
+    const g=grupos.find(x=>x.nombre===_editGrpNombre);
+    if(g){ g.nombre=nombre; g.desc=document.getElementById('grp-desc').value.trim(); }
+    _editGrpNombre=null;
+    document.getElementById('grp-save-btn').textContent='Guardar grupo';
+    document.getElementById('grp-cancel-btn').style.display='none';
+    toast('✏️ Grupo actualizado');
+  } else {
+    if(grupos.find(g=>g.nombre===nombre)){ toast('Ese grupo ya existe','warn'); return; }
+    grupos.push({ nombre, desc:document.getElementById('grp-desc').value.trim() });
+    toast('👥 Grupo registrado');
+  }
+  save('unemi_grupos', grupos);
+  document.getElementById('grp-nombre').value='';
+  document.getElementById('grp-desc').value='';
+  renderTablaGrupos(); fillSelects();
+}
+function editarGrupo(nombre){
+  const g=grupos.find(x=>x.nombre===nombre); if(!g)return;
+  _editGrpNombre=nombre;
+  document.getElementById('grp-nombre').value=g.nombre;
+  document.getElementById('grp-desc').value=g.desc||'';
+  document.getElementById('grp-save-btn').textContent='💾 Actualizar grupo';
+  document.getElementById('grp-cancel-btn').style.display='inline-flex';
+  document.getElementById('grp-nombre').focus();
+  document.getElementById('grp-nombre').scrollIntoView({behavior:'smooth',block:'center'});
+  toast('✏️ Editando — modifica y guarda','warn');
+}
+function cancelarEditGrp(){
+  _editGrpNombre=null;
+  document.getElementById('grp-nombre').value='';
+  document.getElementById('grp-desc').value='';
+  document.getElementById('grp-save-btn').textContent='Guardar grupo';
+  document.getElementById('grp-cancel-btn').style.display='none';
+}
+function eliminarGrupo(nombre){
+  if(!confirm('¿Eliminar grupo "'+nombre+'"?'))return;
+  grupos=grupos.filter(g=>g.nombre!==nombre);
+  save('unemi_grupos', grupos);
+  renderTablaGrupos(); fillSelects();
+  toast('Grupo eliminado','warn');
+}
+function renderTablaGrupos(){
+  const tb=document.getElementById('tabla-grupos');
+  if(!grupos.length){ tb.innerHTML=`<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:24px">No hay grupos registrados</td></tr>`; return; }
+  tb.innerHTML=grupos.map(g=>`<tr>
+    <td><span class="badge" style="background:rgba(59,130,246,.12);color:var(--accent2);font-size:14px;padding:4px 10px">${g.nombre}</span></td>
+    <td>${g.desc||'—'}</td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-secondary btn-sm" onclick="editarGrupo('${g.nombre}')">✏️ Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="eliminarGrupo('${g.nombre}')">🗑️</button>
+    </td>
+  </tr>`).join('');
+}
+
+// ─── REPOSITORIO ──────────────────────────────────────────────
+function fillRepoSelects(){
+  const el1=document.getElementById('repo-fil-asig');
+  const el2=document.getElementById('repo-fil-est');
+  const el3=document.getElementById('repo-fil-año');
+  if(!el1||!el2||!el3) return;
+  el1.innerHTML='<option value="">Todas las asignaturas</option>'+asignaturas.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+  el2.innerHTML='<option value="">Todos los estudiantes</option>'+estudiantes.map(e=>`<option value="${e.id}">${e.nombre}</option>`).join('');
+  // Años disponibles en el repo
+  const repo=JSON.parse(localStorage.getItem('unemi_repo')||'[]');
+  const años=[...new Set(repo.map(r=>r.fechaEntrega?new Date(r.fechaEntrega).getFullYear():''))].filter(Boolean).sort((a,b)=>b-a);
+  el3.innerHTML='<option value="">Todos los años</option>'+años.map(a=>`<option value="${a}">${a}</option>`).join('');
+}
+
+function renderRepositorio(){
+  const repo=JSON.parse(localStorage.getItem('unemi_repo')||'[]');
+  const q=(document.getElementById('repo-search')||{}).value?.toLowerCase()||'';
+  const tipo=(document.getElementById('repo-fil-tipo')||{}).value||'';
+  const asig=(document.getElementById('repo-fil-asig')||{}).value||'';
+  const est=(document.getElementById('repo-fil-est')||{}).value||'';
+  const año=(document.getElementById('repo-fil-año')||{}).value||'';
+
+  let filtered=repo.filter(r=>{
+    if(q && !r.titulo.toLowerCase().includes(q)&&!(r.desc||'').toLowerCase().includes(q)) return false;
+    if(tipo && r.tipo!==tipo) return false;
+    if(asig && r.asig!==asig) return false;
+    if(est && r.estudiante!==est) return false;
+    if(año && r.fechaEntrega && new Date(r.fechaEntrega).getFullYear()!=año) return false;
+    return true;
+  }).sort((a,b)=>new Date(b.fechaEntrega)-new Date(a.fechaEntrega));
+
+  // Stats
+  const statsEl=document.getElementById('repo-stats');
+  if(statsEl){
+    statsEl.innerHTML=`<div class="stat-row" style="margin-bottom:0">
+      <div class="stat-card" style="--accent-color:var(--green)"><div class="num">${repo.length}</div><div class="label">Total entregadas</div></div>
+      <div class="stat-card" style="--accent-color:var(--accent)"><div class="num">${[...new Set(repo.map(r=>r.estudiante))].filter(Boolean).length}</div><div class="label">Estudiantes</div></div>
+      <div class="stat-card" style="--accent-color:var(--purple)"><div class="num">${[...new Set(repo.map(r=>r.asig))].filter(Boolean).length}</div><div class="label">Asignaturas</div></div>
+      <div class="stat-card" style="--accent-color:var(--orange)"><div class="num">${repo.filter(r=>r.archivoTareaKey).length}</div><div class="label">Con archivo guardado</div></div>
+    </div>`;
+  }
+
+  const cont=document.getElementById('repo-lista');
+  if(!cont) return;
+  if(!filtered.length){
+    cont.innerHTML=`<div class="empty"><div class="empty-icon">🗂️</div><p>${repo.length?'No hay resultados con esos filtros':'Aún no hay tareas entregadas en el repositorio'}</p></div>`;
+    return;
+  }
+
+  // Agrupar por mes/año
+  const grupos={};
+  filtered.forEach(r=>{
+    const d=r.fechaEntrega?new Date(r.fechaEntrega):null;
+    const key=d?d.toLocaleDateString('es-EC',{month:'long',year:'numeric'}):'Sin fecha';
+    if(!grupos[key]) grupos[key]=[];
+    grupos[key].push(r);
+  });
+
+  cont.innerHTML=Object.entries(grupos).map(([mes,items])=>`
+    <div style="margin-bottom:28px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+        <h3 style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;text-transform:capitalize;">${mes}</h3>
+        <span style="background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 10px;font-size:11px;color:var(--text3)">${items.length} tarea${items.length>1?'s':''}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${items.map(r=>renderRepoCard(r)).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderRepoCard(r){
+  const asigObj=asignaturas.find(x=>x.id===r.asig);
+  const estObj=estudiantes.find(x=>x.id===r.estudiante);
+  const tc=tipoClass(r.tipo);
+  const fechaEntrega=r.fechaEntrega?new Date(r.fechaEntrega).toLocaleString('es-EC',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+  return `<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;" class="act-card ${tc}" style="cursor:default">
+    <div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center;">
+        <span class="badge ${tc}" style="font-size:11px">${r.tipo}</span>
+        ${asigObj?`<span style="font-size:12px;color:var(--text2)">📚 ${asigObj.nombre}</span>`:''}
+        ${r.grupo?`<span style="font-size:12px;color:var(--text2)">👥 Grupo ${r.grupo}</span>`:''}
+        ${estObj?`<span style="font-size:12px;color:var(--accent2)">🧑‍🎓 ${estObj.nombre}</span>`:''}
+      </div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:6px;">${r.titulo}</div>
+      <div style="font-size:12px;color:var(--text3);display:flex;flex-wrap:wrap;gap:12px;">
+        <span>📅 Vencía: ${fmtDate(r.cierre)}${r.horaCierre?' — '+r.horaCierre:''}</span>
+        <span style="color:var(--green)">✅ Entregada: ${fechaEntrega}</span>
+        ${r.puntaje?`<span>🎯 ${r.puntaje} pts</span>`:''}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+        ${(()=>{ const fp=loadFile(r.archivoProfeKey); return fp?`<a href="${fp.data}" download="${fp.nombre}" class="btn btn-secondary btn-sm" style="text-decoration:none">📄 ${fp.nombre}</a>`:''; })()}
+        ${(()=>{ const ft=loadFile(r.archivoTareaKey); return ft?`<a href="${ft.data}" download="${ft.nombre}" class="btn btn-green btn-sm" style="text-decoration:none">⬇️ Mi tarea: ${ft.nombre}</a>`:''; })()}
+      </div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="eliminarDeRepo('${r.id}')" title="Eliminar del repositorio">🗑️</button>
+  </div>`;
+}
+
+function eliminarDeRepo(id){
+  if(!confirm('¿Eliminar esta entrada del repositorio?')) return;
+  let repo=JSON.parse(localStorage.getItem('unemi_repo')||'[]');
+  repo=repo.filter(r=>r.id!==id);
+  save('unemi_repo', repo);
+  renderRepositorio();
+  toast('Eliminado del repositorio','warn');
+}
+
+// ─── ESTUDIANTES ──────────────────────────────────────────────
+let _editEstId=null;
+function guardarEstudiante(){
+  const nombre = document.getElementById('est-nombre').value.trim();
+  if(!nombre){ toast('Escribe el nombre del estudiante','error'); return; }
+  if(_editEstId){
+    const e=estudiantes.find(x=>x.id===_editEstId);
+    if(e){ e.nombre=nombre; e.cedula=document.getElementById('est-cedula').value.trim(); e.carrera=document.getElementById('est-carrera').value.trim(); e.contacto=document.getElementById('est-contacto').value.trim(); }
+    _editEstId=null;
+    document.getElementById('est-save-btn').textContent='💾 Guardar estudiante';
+    document.getElementById('est-cancel-btn').style.display='none';
+    toast('✏️ Estudiante actualizado');
+  } else {
+    estudiantes.push({ id:uid(), nombre, cedula:document.getElementById('est-cedula').value.trim(), carrera:document.getElementById('est-carrera').value.trim(), contacto:document.getElementById('est-contacto').value.trim() });
+    toast('🧑‍🎓 Estudiante registrado');
+  }
+  save('unemi_estudiantes', estudiantes);
+  ['est-nombre','est-cedula','est-carrera','est-contacto'].forEach(x=>document.getElementById(x).value='');
+  renderTablaEstudiantes(); fillSelects();
+}
+function editarEstudiante(id){
+  const e=estudiantes.find(x=>x.id===id); if(!e)return;
+  _editEstId=id;
+  document.getElementById('est-nombre').value=e.nombre;
+  document.getElementById('est-cedula').value=e.cedula||'';
+  document.getElementById('est-carrera').value=e.carrera||'';
+  document.getElementById('est-contacto').value=e.contacto||'';
+  document.getElementById('est-save-btn').textContent='💾 Actualizar estudiante';
+  document.getElementById('est-cancel-btn').style.display='inline-flex';
+  document.getElementById('est-nombre').focus();
+  document.getElementById('est-nombre').scrollIntoView({behavior:'smooth',block:'center'});
+  toast('✏️ Editando — modifica y guarda','warn');
+}
+function cancelarEditEst(){
+  _editEstId=null;
+  ['est-nombre','est-cedula','est-carrera','est-contacto'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('est-save-btn').textContent='💾 Guardar estudiante';
+  document.getElementById('est-cancel-btn').style.display='none';
+}
+function eliminarEstudiante(id){
+  const usado = actividades.some(a=>a.estudiante===id);
+  if(usado && !confirm('Este estudiante tiene actividades registradas. ¿Eliminar de todas formas?')) return;
+  if(!usado && !confirm('¿Eliminar este estudiante?')) return;
+  estudiantes = estudiantes.filter(e=>e.id!==id);
+  save('unemi_estudiantes', estudiantes);
+  renderTablaEstudiantes(); fillSelects();
+  toast('Estudiante eliminado','warn');
+}
+function renderTablaEstudiantes(){
+  const tb = document.getElementById('tabla-estudiantes');
+  if(!tb) return;
+  if(!estudiantes.length){
+    tb.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No hay estudiantes registrados</td></tr>`;
+    return;
+  }
+  tb.innerHTML = estudiantes.map(e=>{
+    const nActs = actividades.filter(a=>a.estudiante===e.id).length;
+    const nPend = actividades.filter(a=>a.estudiante===e.id&&!a.entregada).length;
+    return `<tr>
+      <td><strong>${e.nombre}</strong></td>
+      <td>${e.cedula||'—'}</td>
+      <td>${e.carrera||'—'}</td>
+      <td>${e.contacto ? `<a href="https://wa.me/593${e.contacto.replace(/^0/,'')}" target="_blank" style="color:var(--green);text-decoration:none">📱 ${e.contacto}</a>` : '—'}</td>
+      <td>
+        <span style="font-size:12px">${nActs} total</span>
+        ${nPend?`<span class="badge" style="background:rgba(245,158,11,.12);color:var(--orange);margin-left:6px">${nPend} pend.</span>`:''}
+      </td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="editarEstudiante('${e.id}')">✏️ Editar</button>
+        <button class="btn btn-secondary btn-sm" onclick="filtrarPorEstudiante('${e.id}')">🔍 Tareas</button>
+        <button class="btn btn-danger btn-sm" onclick="eliminarEstudiante('${e.id}')">🗑️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarPorEstudiante(id){
+  showPage('actividades');
+  setTimeout(()=>{
+    document.getElementById('fil-estudiante').value = id;
+    renderActividades();
+  }, 50);
+}
+
+// ─── PERFIL ───────────────────────────────────────────────────
+let perfil = JSON.parse(localStorage.getItem('unemi_perfil') || '{}');
+
+function guardarPerfil(){
+  const nombre = document.getElementById('per-nombre').value.trim();
+  if(!nombre){ toast('Escribe tu nombre completo','error'); return; }
+  perfil = {
+    nombre,
+    cedula: document.getElementById('per-cedula').value.trim(),
+    carrera: document.getElementById('per-carrera').value.trim(),
+    semestre: document.getElementById('per-semestre').value.trim(),
+    modalidad: document.getElementById('per-modalidad').value,
+  };
+  save('unemi_perfil', perfil);
+  actualizarHeaderPerfil();
+  renderPerfilPreview();
+  toast('🎓 Perfil guardado');
+}
+
+function actualizarHeaderPerfil(){
+  if(!perfil.nombre) return;
+  const initials = perfil.nombre.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  document.getElementById('stu-avatar').textContent = initials;
+  document.getElementById('stu-name-header').textContent = perfil.nombre.split(' ')[0] + ' ' + (perfil.nombre.split(' ')[1]||'');
+}
+
+function renderPerfilPreview(){
+  const card = document.getElementById('perfil-preview-card');
+  const prev = document.getElementById('perfil-preview');
+  if(!perfil.nombre){ card.style.display='none'; return; }
+  card.style.display='block';
+  prev.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+      <div><span style="color:var(--text3)">👤 Nombre</span><br><strong>${perfil.nombre}</strong></div>
+      ${perfil.cedula?`<div><span style="color:var(--text3)">🪪 Cédula</span><br><strong>${perfil.cedula}</strong></div>`:''}
+      ${perfil.carrera?`<div><span style="color:var(--text3)">🎓 Carrera</span><br><strong>${perfil.carrera}</strong></div>`:''}
+      ${perfil.semestre?`<div><span style="color:var(--text3)">📅 Nivel</span><br><strong>${perfil.semestre}</strong></div>`:''}
+      ${perfil.modalidad?`<div><span style="color:var(--text3)">🖥️ Modalidad</span><br><strong>${perfil.modalidad}</strong></div>`:''}
+    </div>`;
+}
+
+function cargarFormPerfil(){
+  document.getElementById('per-nombre').value = perfil.nombre||'';
+  document.getElementById('per-cedula').value = perfil.cedula||'';
+  document.getElementById('per-carrera').value = perfil.carrera||'';
+  document.getElementById('per-semestre').value = perfil.semestre||'';
+  document.getElementById('per-modalidad').value = perfil.modalidad||'';
+  renderPerfilPreview();
+}
+
+function limpiarYMostrar(){
+  limpiarArchivosBasura();
+  mostrarEspacio();
+  toast('🧹 Limpieza completada — ahora intenta guardar de nuevo');
+}
+
+function mostrarEspacio(){
+  const el=document.getElementById('espacio-info'); if(!el)return;
+  try{
+    let total=0;
+    let nFiles=0;
+    Object.keys(localStorage).forEach(k=>{
+      const v=localStorage.getItem(k)||'';
+      total+=v.length;
+      if(k.startsWith('file_')) nFiles++;
+    });
+    const kb=(total/1024).toFixed(1);
+    const pct=Math.min(100,(total/(5*1024*1024)*100)).toFixed(0);
+    const color=pct>80?'var(--red)':pct>50?'var(--orange)':'var(--green)';
+    el.innerHTML=`
+      <div style="margin-bottom:8px;display:flex;justify-content:space-between;">
+        <span>Espacio usado</span><strong style="color:${color}">${kb} KB / ~5120 KB (${pct}%)</strong>
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:8px;overflow:hidden;">
+        <div style="background:${color};width:${pct}%;height:100%;border-radius:4px;transition:width .3s"></div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--text3);">Archivos guardados: ${nFiles}</div>`;
+  }catch(e){ el.innerHTML='No se pudo calcular el espacio'; }
+}
+
+// ─── RESPALDO ─────────────────────────────────────────────────
+let importData = null;
+
+function renderExportStats(){
+  document.getElementById('export-stats').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div>📋 Actividades: <strong>${actividades.length}</strong></div>
+      <div>📚 Asignaturas: <strong>${asignaturas.length}</strong></div>
+      <div>👥 Grupos: <strong>${grupos.length}</strong></div>
+      <div>🧑‍🎓 Estudiantes: <strong>${estudiantes.length}</strong></div>
+      <div>🗂️ Repositorio: <strong>${JSON.parse(localStorage.getItem('unemi_repo')||'[]').length} tareas entregadas</strong></div>
+      <div>🎓 Perfil: <strong>${perfil.nombre||'No configurado'}</strong></div>
+    </div>`;
+}
+
+function exportarDatos(){
+  const data = {
+    version: '1.0',
+    fecha: new Date().toISOString(),
+    perfil,
+    asignaturas,
+    grupos,
+    estudiantes,
+    actividades: actividades.map(a=>({...a})),
+    repositorio: JSON.parse(localStorage.getItem('unemi_repo')||'[]')
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  a.href = url; a.download = `UNEMI_Respaldo_${fecha}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('✅ Respaldo descargado correctamente');
+}
+
+function previsualizarImport(input){
+  const f = input.files[0]; if(!f)return;
+  document.getElementById('import-file-name').textContent = f.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      importData = JSON.parse(e.target.result);
+      const prev = document.getElementById('import-preview');
+      prev.style.display = 'block';
+      prev.innerHTML = `
+        <div style="color:var(--green);font-weight:600;margin-bottom:8px;">✅ Archivo válido</div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div>📋 Actividades a restaurar: <strong>${(importData.actividades||[]).length}</strong></div>
+          <div>📚 Asignaturas: <strong>${(importData.asignaturas||[]).length}</strong></div>
+          <div>👥 Grupos: <strong>${(importData.grupos||[]).length}</strong></div>
+          <div>🧑‍🎓 Estudiantes: <strong>${(importData.estudiantes||[]).length}</strong></div>
+          <div>🗂️ Repositorio: <strong>${(importData.repositorio||[]).length} tareas entregadas</strong></div>
+          <div>🎓 Perfil: <strong>${importData.perfil?.nombre||'No incluido'}</strong></div>
+          <div style="color:var(--text3);margin-top:4px;">Generado: ${importData.fecha ? new Date(importData.fecha).toLocaleString('es-EC') : '—'}</div>
+        </div>`;
+      document.getElementById('import-btn').style.display = 'block';
+    } catch {
+      toast('❌ Archivo inválido, no es un respaldo correcto','error');
+      importData = null;
+      document.getElementById('import-preview').style.display='none';
+      document.getElementById('import-btn').style.display='none';
+    }
+  };
+  reader.readAsText(f);
+}
+
+function importarDatos(){
+  if(!importData){ toast('Selecciona un archivo primero','error'); return; }
+  if(!confirm('¿Restaurar datos? Los datos actuales serán reemplazados.'))return;
+  if(importData.actividades) { actividades = importData.actividades; save('unemi_acts', actividades); }
+  if(importData.asignaturas) { asignaturas = importData.asignaturas; save('unemi_asigs', asignaturas); }
+  if(importData.grupos) { grupos = importData.grupos; save('unemi_grupos', grupos); }
+  if(importData.estudiantes) { estudiantes = importData.estudiantes; save('unemi_estudiantes', estudiantes); }
+  if(importData.repositorio) { save('unemi_repo', importData.repositorio); }
+  if(importData.perfil) { perfil = importData.perfil; save('unemi_perfil', perfil); }
+  importData = null;
+  document.getElementById('import-file').value='';
+  document.getElementById('import-file-name').textContent='Ningún archivo seleccionado';
+  document.getElementById('import-preview').style.display='none';
+  document.getElementById('import-btn').style.display='none';
+  actualizarHeaderPerfil(); renderDashboard(); fillSelects(); updateNotif();
+  toast('✅ Datos restaurados correctamente');
+}
+
+function limpiarTodo(){
+  if(!confirm('¿Eliminar TODOS los datos? Esta acción no se puede deshacer.'))return;
+  if(!confirm('¿Confirmas que deseas borrar todo?'))return;
+  actividades=[]; asignaturas=[]; grupos=[]; estudiantes=[]; perfil={};
+  ['unemi_acts','unemi_asigs','unemi_grupos','unemi_estudiantes','unemi_perfil','unemi_repo'].forEach(k=>localStorage.removeItem(k));
+  document.getElementById('stu-avatar').textContent='?';
+  document.getElementById('stu-name-header').textContent='Mi perfil';
+  renderDashboard(); fillSelects(); updateNotif();
+  toast('🗑️ Datos eliminados','warn');
+}
+
+
+// ─── IMPRIMIR ACTIVIDAD INDIVIDUAL ────────────────────────────
+function imprimirActividad(id){
+  const act=actividades.find(a=>a.id===id); if(!act)return;
+  const asigObj=asignaturas.find(x=>x.id===act.asig);
+  const estObj=estudiantes.find(x=>x.id===act.estudiante);
+  const urg=urgenciaInfo(act);
+  const ahora=new Date().toLocaleString('es-EC',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const w=window.open('','_blank','width=700,height=600');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Actividad – ${act.titulo}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:32px;color:#111;max-width:680px;margin:0 auto;}
+    h1{font-size:20px;margin-bottom:4px;}
+    .badge{display:inline-block;padding:3px 10px;border-radius:5px;font-size:12px;font-weight:700;border:1px solid #ccc;margin-bottom:12px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;font-size:13px;}
+    .field label{font-size:11px;color:#666;display:block;margin-bottom:2px;}
+    .field strong{font-size:14px;}
+    .desc{background:#f5f5f5;border-radius:6px;padding:12px;font-size:13px;line-height:1.6;margin:12px 0;}
+    .files{font-size:12px;color:#555;margin-top:10px;}
+    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #ddd;font-size:11px;color:#999;display:flex;justify-content:space-between;}
+    .estado{font-weight:700;color:${act.entregada?'#10b981':'#f59e0b'};}
+    @media print{body{padding:16px;}}
+  </style></head><body>
+  <p style="font-size:12px;color:#888;margin-bottom:6px;">WILLISMAR – Gestión de Actividades</p>
+  <h1>${act.titulo}</h1>
+  <span class="badge">${act.tipo}</span>
+  <span class="estado" style="margin-left:8px;font-size:13px;">${act.entregada?'✅ Entregada':'⏳ Pendiente – '+urg.label}</span>
+  <div class="grid">
+    ${asigObj?`<div class="field"><label>📚 Asignatura</label><strong>${asigObj.nombre}</strong>${asigObj.docente?`<br><span style="font-size:11px;color:#666">Doc: ${asigObj.docente}</span>`:''}</div>`:''}
+    ${estObj?`<div class="field"><label>🧑‍🎓 Estudiante</label><strong>${estObj.nombre}</strong>${estObj.carrera?`<br><span style="font-size:11px;color:#666">${estObj.carrera}</span>`:''}</div>`:''}
+    ${act.grupo?`<div class="field"><label>👥 Grupo</label><strong>${act.grupo}</strong></div>`:''}
+    ${act.puntaje?`<div class="field"><label>🎯 Puntaje</label><strong>${act.puntaje} pts</strong></div>`:''}
+    ${act.apertura?`<div class="field"><label>📅 Apertura</label><strong>${act.apertura.split('-').reverse().join('/')}</strong></div>`:''}
+    <div class="field"><label>⏰ Fecha límite</label><strong>${act.cierre?act.cierre.split('-').reverse().join('/'):'—'}${act.horaCierre?' — '+act.horaCierre:''}</strong></div>
+  </div>
+  ${act.desc?`<div class="desc">${act.desc}</div>`:''}
+  ${act.linkProfe||act.linkTarea?`<div class="files">
+    ${act.linkProfe?`<div style="margin-bottom:6px;">📎 Archivo del profesor: <a href="${act.linkProfe}" target="_blank" style="color:var(--azul);font-weight:700;word-break:break-all;">Ver archivo →</a></div>`:''}
+    ${act.linkTarea?`<div>📤 Mi tarea entregada: <a href="${act.linkTarea}" target="_blank" style="color:var(--green);font-weight:700;word-break:break-all;">Ver tarea →</a></div>`:''}
+  </div>`:''}
+  <div class="footer"><span>Impreso: ${ahora}</span><span>WILLISMAR Tareas</span></div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+limpiarArchivosBasura();
+renderDashboard();
+fillSelects();
+updateNotif();
+actualizarHeaderPerfil();
+fbLoadTareas(); // Cargar desde Firebase
+
+// Notif auto cada 30 seg
+setInterval(updateNotif, 30000);
+</script>
+<!-- BARRA INFERIOR MÓVIL -->
+<div id="tareas-more-overlay" onclick="cerrarTareasMore()"></div>
+<div id="tareas-more-menu">
+  <div style="text-align:center;margin-bottom:12px;">
+    <span style="color:rgba(255,255,255,.3);font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;">Más opciones</span>
+  </div>
+  <div class="more-grid">
+    <button class="more-item" onclick="showPageMobile('estudiantes')"><span class="mico2">🧑‍🎓</span>Estudiantes</button>
+    <button class="more-item" onclick="showPageMobile('asignaturas')"><span class="mico2">📚</span>Asignaturas</button>
+    <button class="more-item" onclick="showPageMobile('grupos')"><span class="mico2">👥</span>Grupos</button>
+    <button class="more-item" onclick="showPageMobile('perfil')"><span class="mico2">🎓</span>Mi Perfil</button>
+    <button class="more-item" onclick="showPageMobile('respaldo')"><span class="mico2">💾</span>Respaldo</button>
+  </div>
+</div>
+
+<div id="mobile-nav-tareas">
+  <div class="mnav-items">
+    <button class="mnav-btn active" id="mnav-t-dashboard" onclick="showPageMobile('dashboard')">
+      <span class="mico">📊</span>Inicio
+    </button>
+    <button class="mnav-btn" id="mnav-t-actividades" onclick="showPageMobile('actividades')">
+      <span class="mico">📋</span>Actividades
+    </button>
+    <button class="mnav-btn" id="mnav-t-repositorio" onclick="showPageMobile('repositorio')">
+      <span class="mico">🗂️</span>Repositorio
+    </button>
+    <button class="mnav-btn" id="mnav-t-calendario" onclick="showPageMobile('calendario')">
+      <span class="mico">📅</span>Calendario
+    </button>
+    <button class="mnav-btn" id="mnav-t-more" onclick="toggleTareasMore()">
+      <span class="mico">⋯</span>Más
+    </button>
+  </div>
+</div>
+
+<script>
+function showPageMobile(id){
+  cerrarTareasMore();
+  showPage(id);
+  document.querySelectorAll('#mobile-nav-tareas .mnav-btn').forEach(b=>b.classList.remove('active'));
+  const btn = document.getElementById('mnav-t-'+id);
+  if(btn) btn.classList.add('active');
+}
+function toggleTareasMore(){
+  const m=document.getElementById('tareas-more-menu');
+  const o=document.getElementById('tareas-more-overlay');
+  const open=m.style.display==='block';
+  m.style.display=open?'none':'block';
+  o.style.display=open?'none':'block';
+}
+function cerrarTareasMore(){
+  document.getElementById('tareas-more-menu').style.display='none';
+  document.getElementById('tareas-more-overlay').style.display='none';
+}
+// PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw-tareas.js').catch(e=>console.log('SW:',e));
+}
+</script>
+</body>
+</html>
